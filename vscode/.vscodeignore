@@ -1,0 +1,22 @@
+# Development / packaging artifacts
+.vscode/**
+.vscode-test/**
+scripts/**
+test/**
+
+# Dependencies
+node_modules/**
+
+# Build outputs & binaries
+**/*.vsix
+**/*.map
+dist/**
+
+# VCS / OS noise
+.gitignore
+.git/**
+**/.DS_Store
+**/Thumbs.db
+
+# Local configs
+*.local.json

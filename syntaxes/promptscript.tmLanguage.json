@@ -1,0 +1,205 @@
+{
+  "name": "PromptScript",
+  "scopeName": "source.promptscript",
+  "fileTypes": [
+    "promptscript",
+    "ps"
+  ],
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#interpolation"
+    },
+    {
+      "include": "#strings"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "comment": "行首转义：\\// 或 \\/* —— 反斜杠被剥掉，// 或 /* 按普通内容渲染（不识别为注释）",
+          "match": "^(\\s*)(\\\\\\/)(?:\\/|\\*)",
+          "captures": {
+            "2": {
+              "name": "constant.character.escape.promptscript"
+            }
+          }
+        },
+        {
+          "comment": "行首整行 // 注释（文章模式原文行；中间位置永不识别）",
+          "match": "^\\s*//.*$",
+          "name": "comment.line.double-slash.promptscript"
+        },
+        {
+          "comment": "行首块注释后紧跟行注释：/* c */ // note —— 整行仍是注释",
+          "match": "^\\s*(/\\*(?:[^*]|\\*(?!/))*\\*/)\\s*(//.*)?$",
+          "captures": {
+            "1": {
+              "name": "comment.block.promptscript"
+            },
+            "2": {
+              "name": "comment.line.double-slash.promptscript"
+            }
+          }
+        },
+        {
+          "comment": "行首 /* 块注释，可跨行（被跨过的行整体擦除）",
+          "begin": "^\\s*/\\*",
+          "end": "\\*/",
+          "name": "comment.block.promptscript"
+        },
+        {
+          "comment": "行首孤立 */ —— E_COMMENT_STRAY",
+          "match": "^\\s*\\*/",
+          "name": "invalid.illegal.stray-comment-end.promptscript"
+        },
+        {
+          "comment": "代码模式字符串字面量行：\"文本\" // 说明（整行结构匹配，引号闭合后仅允许空白或尾部注释）",
+          "match": "^\\s*(\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*')\\s*(//.*)?$",
+          "captures": {
+            "1": {
+              "patterns": [
+                {
+                  "include": "#strings"
+                }
+              ]
+            },
+            "2": {
+              "name": "comment.line.double-slash.promptscript"
+            }
+          }
+        },
+        {
+          "comment": "指令行（@ 开头）与 } 闭合行：行内引号感知识别尾部 // 与行内 /* */，支持行首转义",
+          "begin": "^\\s*(@|})",
+          "end": "(?=$)",
+          "patterns": [
+            {
+              "comment": "行首 @ 之后紧跟的关键词（区域起点在 @ 之后，用 lookbehind 锚定行首的 @）",
+              "match": "(?<=^@)(set|if|else|include|for)\\b",
+              "name": "keyword.control.promptscript"
+            },
+            {
+              "comment": "\\ 转义跳下一字符（C 语义，引号感知扫描）",
+              "match": "\\\\.",
+              "name": "constant.character.escape.promptscript"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "match": "//.*$",
+              "name": "comment.line.double-slash.promptscript"
+            },
+            {
+              "begin": "/\\*",
+              "end": "\\*/",
+              "name": "comment.block.promptscript"
+            },
+            {
+              "match": "\\*/",
+              "name": "invalid.illegal.stray-comment-end.promptscript"
+            },
+            {
+              "comment": "} 行内的 @else 等关键词",
+              "match": "@(set|if|else|include|for)\\b",
+              "name": "keyword.control.promptscript"
+            },
+            {
+              "match": "(?<=^@)[a-zA-Z]+|@[a-zA-Z]+",
+              "name": "invalid.illegal.promptscript"
+            }
+          ]
+        }
+      ]
+    },
+    "directives": {
+      "patterns": [
+        {
+          "match": "\\s*@set\\b",
+          "name": "keyword.control.promptscript"
+        },
+        {
+          "match": "\\s*@if\\b|\\s*@else\\b",
+          "name": "keyword.control.promptscript"
+        },
+        {
+          "match": "\\s*@include\\b",
+          "name": "keyword.control.promptscript"
+        },
+        {
+          "match": "\\s*@for\\b",
+          "name": "keyword.control.promptscript"
+        },
+        {
+          "match": "\\s*@[a-zA-Z]+",
+          "name": "invalid.illegal.promptscript"
+        }
+      ]
+    },
+    "interpolation": {
+      "begin": "\\{",
+      "end": "\\}",
+      "name": "meta.interpolation.promptscript",
+      "patterns": [
+        {
+          "include": "#strings"
+        },
+        {
+          "match": "\\b(true|false|null)\\b",
+          "name": "constant.language.promptscript"
+        },
+        {
+          "match": "\\d+(\\.\\d+)?",
+          "name": "constant.numeric.promptscript"
+        },
+        {
+          "match": "\\?\\?|\\|\\||&&|==|!=|<=?|>=?|\\?",
+          "name": "keyword.operator.promptscript"
+        },
+        {
+          "match": "[\\p{L}_][\\p{L}\\p{N}_\\-.]*",
+          "name": "variable.other.promptscript"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.promptscript",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            },
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.promptscript"
+            }
+          ]
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.promptscript",
+          "patterns": [
+            {
+              "include": "#interpolation"
+            },
+            {
+              "match": "\\\\.",
+              "name": "constant.character.escape.promptscript"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "promptscript",
+  "version": "0.1.0",
+  "description": "Line-structure template language for AI prompts",
+  "license": "apache-2.0",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "bin": {
+    "promptscript": "./dist/bin/promptscript.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "docs",
+    "syntaxes",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.8"
+  }
+}

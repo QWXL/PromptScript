@@ -1,0 +1,59 @@
+{
+  "name": "vscode-promptscript",
+  "displayName": "PromptScript",
+  "description": "PromptScript 语言支持：语法高亮（@指令 / {插值} / 字符串 / 注释）、括号配对、自动闭合与缩进规则。PromptScript 是面向 AI 提示词编排的模板语言（舒月项目 / MoonChatAI 平台）。",
+  "version": "0.0.1",
+  "publisher": "moonchatai",
+  "license": "Apache-2.0",
+  "icon": "icon/icon.png",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "promptscript",
+    "prompt",
+    "template",
+    "ai",
+    "moonchatai",
+    "language",
+    "syntax",
+    "highlighting"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "promptscript",
+        "aliases": [
+          "PromptScript",
+          "promptscript"
+        ],
+        "extensions": [
+          ".promptscript",
+          ".ps"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "promptscript",
+        "scopeName": "source.promptscript",
+        "path": "./syntaxes/promptscript.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "sync-grammar": "node scripts/sync-grammar.js",
+    "test:grammar": "node scripts/verify-grammar.mjs",
+    "package": "npm run test:grammar && npm run sync-grammar && vsce package",
+    "vscode:prepublish": "npm run sync-grammar"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.1",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
+  }
+}
