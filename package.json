@@ -1,6 +1,6 @@
 {
   "name": "promptscript",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Line-structure template language for AI prompts",
   "keywords": [
     "ai",
