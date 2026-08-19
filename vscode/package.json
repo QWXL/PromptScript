@@ -3,9 +3,10 @@
   "displayName": "PromptScript",
   "description": "PromptScript 语言支持：语法高亮（@指令 / {插值} / 字符串 / 注释）、括号配对、自动闭合与缩进规则。PromptScript 是面向 AI 提示词编排的模板语言（舒月项目 / MoonChatAI 平台）。",
   "version": "0.0.1",
-  "publisher": "moonchatai",
+  "publisher": "chumenta",
   "license": "Apache-2.0",
   "icon": "icon/icon.png",
+  "repository": "https://github.com/QWXL/PromptScript/tree/main/vscode",
   "engines": {
     "vscode": "^1.74.0"
   },
@@ -17,7 +18,8 @@
     "prompt",
     "template",
     "ai",
-    "moonchatai",
+    "chumenta",
+    "shuyue",
     "language",
     "syntax",
     "highlighting"
