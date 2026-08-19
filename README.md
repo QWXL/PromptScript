@@ -1,6 +1,6 @@
 # PromptScript
 
-中文版本（您当前在）| [English Version](./README_EN.md)
+中文版本（当前）| [English Version](./README_EN.md)
 
 PromptScript 是一种面向复杂 AI 提示词编排的轻量级模板语言，提供：
 
