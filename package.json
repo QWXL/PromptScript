@@ -31,9 +31,6 @@
   },
   "files": [
     "dist",
-    "src",
-    "docs",
-    "syntaxes",
     "README.md",
     "LICENSE"
   ],
