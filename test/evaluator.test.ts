@@ -93,8 +93,19 @@ describe("空缺矩阵", () => {
     await err(() => R('@set x = missing_name\n{x}'), "E_UNBOUND");
   });
 
-  test("谓词未绑定 → E_UNBOUND", async () => {
-    await err(() => R('@if(missing) {\n  "x"\n}\n'), "E_UNBOUND");
+  test("谓词未绑定 → 按 undefined 判假（不报错）", async () => {
+    expect(await R('@if(missing) {\n  "x"\n}\n')).toBe("");
+    expect(await R('@if(missing) {\n  "x"\n}\n@else {\n  "y"\n}\n')).toBe("y");
+  });
+
+  test("谓词内嵌套路径未绑定 → 判假；! 未绑定 → 真", async () => {
+    expect(await R('@if(user.moneys) {\n  "有"\n}\n@else {\n  "无"\n}\n', {})).toBe("无");
+    expect(await R('@if(user.moneys.money) {\n  "有"\n}\n@else {\n  "无"\n}\n', {})).toBe("无");
+    expect(await R('@if(!missing) {\n  "x"\n}\n')).toBe("x");
+  });
+
+  test("三元条件未绑定 → 判假（走否分支）", async () => {
+    expect(await R('{missing ? "是" : "否"}')).toBe("否");
   });
 
   test("直接渲染记录 → E_RECORD_RENDER", async () => {
@@ -113,9 +124,10 @@ describe("空缺矩阵", () => {
     expect(await R('@set x = a ?? "d"\n{x}', {})).toBe("d");
   });
 
-  test("比较操作数未绑定 → E_UNBOUND（硬空缺，不再空值等价/静默 false）", async () => {
+  test("比较操作数未绑定：槽位硬空缺 E_UNBOUND；@if 谓词按 undefined", async () => {
     await err(() => R('{a < b}', { b: 1 }), "E_UNBOUND");
-    await err(() => R('@if(a == 1) {\n  "x"\n}\n', {}), "E_UNBOUND");
+    expect(await R('@if(a == 1) {\n  "x"\n}\n', {})).toBe("");
+    expect(await R('@if(a == null) {\n  "x"\n}\n', {})).toBe("x");
   });
 
   test("原型链不穿透：继承成员不可访问", async () => {
@@ -127,8 +139,9 @@ describe("空缺矩阵", () => {
     await err(() => R("{r.handler}", { r: { handler: () => 42 } }), "E_RECORD_RENDER");
   });
 
-  test("|| 左 MISS → E_UNBOUND（与 && 对齐）", async () => {
-    await err(() => R('@if(a || b) {\n  "x"\n}\n', { b: true }), "E_UNBOUND");
+  test("@if 谓词内逻辑：未绑定按 undefined（|| 取右、&& 判假）", async () => {
+    expect(await R('@if(a || b) {\n  "x"\n}\n', { b: true })).toBe("x");
+    expect(await R('@if(a && b) {\n  "x"\n}\n', { b: true })).toBe("");
   });
 });
 

@@ -92,11 +92,13 @@ function lookup(frame: Frame, name: string): Result {
   return { found: true, value: v };
 }
 
-function evalExpr(e: Expr, frame: Frame, file: string, line: number): PSValue | typeof MISS {
+// soft = 谓词上下文（@if 条件 / 三元 test）：未绑定名按 undefined 处理，判假而非 E_UNBOUND；
+// 值上下文（槽位 / @set / @for 数据源）保持硬空缺。
+function evalExpr(e: Expr, frame: Frame, file: string, line: number, soft = false): PSValue | typeof MISS {
   switch (e.kind) {
     case "path": {
       const r = lookup(frame, e.name);
-      return r.found ? r.value : MISS;
+      return r.found ? r.value : soft ? undefined : MISS;
     }
     case "literal": return e.value;
     case "record": {
@@ -105,18 +107,17 @@ function evalExpr(e: Expr, frame: Frame, file: string, line: number): PSValue | 
       return rec;
     }
     case "coalesce": {
-      const l = evalExpr(e.left, frame, file, line);
-      if (l === MISS || l === null || l === undefined) return evalExpr(e.right, frame, file, line);
+      const l = evalExpr(e.left, frame, file, line, soft);
+      if (l === MISS || l === null || l === undefined) return evalExpr(e.right, frame, file, line, soft);
       return l;
     }
     case "cond": {
-      const t = evalExpr(e.test, frame, file, line);
-      if (t === MISS) throw psError("render", file, line, "E_UNBOUND", "条件表达式引用了未绑定的名字");
-      return truthy(t) ? evalExpr(e.yes, frame, file, line) : evalExpr(e.no, frame, file, line);
+      const t = evalExpr(e.test, frame, file, line, true);
+      return truthy(t) ? evalExpr(e.yes, frame, file, line, soft) : evalExpr(e.no, frame, file, line, soft);
     }
     case "compare": {
-      const l = evalExpr(e.left, frame, file, line);
-      const r = evalExpr(e.right, frame, file, line);
+      const l = evalExpr(e.left, frame, file, line, soft);
+      const r = evalExpr(e.right, frame, file, line, soft);
       if (l === MISS || r === MISS) {
         // 偏差注：brief 代码对 MISS 操作数做空值等价（==）或静默 false（</>）——与规范空缺矩阵
         // "未绑定名被使用 → E_UNBOUND（硬空缺）" 冲突；空值等价只适用于已绑定的 null/undefined。
@@ -132,33 +133,37 @@ function evalExpr(e: Expr, frame: Frame, file: string, line: number): PSValue | 
       return evalCompare(e.op, l, r);
     }
     case "logical": {
-      const l = evalExpr(e.left, frame, file, line);
-      // fix 5：谓词无回退概念——左 MISS 直接上抛（与 && 对齐）；|| 不再吞 MISS 去求值右值
+      const l = evalExpr(e.left, frame, file, line, soft);
+      // 值上下文：左 MISS 直接上抛（与 && 对齐），|| 不吞 MISS 去求值右值
       if (l === MISS) return MISS;
-      if (e.op === "&&") return truthy(l) ? evalExpr(e.right, frame, file, line) : false;
-      return truthy(l) ? l : evalExpr(e.right, frame, file, line);
+      if (e.op === "&&") return truthy(l) ? evalExpr(e.right, frame, file, line, soft) : false;
+      return truthy(l) ? l : evalExpr(e.right, frame, file, line, soft);
     }
     case "not": {
-      const v = evalExpr(e.operand, frame, file, line);
+      const v = evalExpr(e.operand, frame, file, line, soft);
       if (v === MISS) throw psError("render", file, line, "E_UNBOUND", "! 操作数引用了未绑定的名字");
       return !truthy(v);
     }
     case "index": {
-      const obj = evalExpr(e.obj, frame, file, line);
-      if (obj === MISS) return MISS;
-      if (obj === null || obj === undefined || typeof obj !== "object" || Array.isArray(obj)) {
+      const obj = evalExpr(e.obj, frame, file, line, soft);
+      if (obj === MISS) return soft ? undefined : MISS;
+      if (obj === null || obj === undefined) {
+        if (soft) return undefined;
         throw psError("render", file, line, "E_TYPE", "下标访问的目标不是记录");
       }
-      const key = evalExpr(e.index, frame, file, line);
+      if (typeof obj !== "object" || Array.isArray(obj)) {
+        throw psError("render", file, line, "E_TYPE", "下标访问的目标不是记录");
+      }
+      const key = evalExpr(e.index, frame, file, line, soft);
       // 偏差注：brief 原文对 MISS key 抛 E_UNBOUND，与 brief 自身用例（R(text, {}) → "未知"）及
       // "MISS 传播"语义矛盾——下标键未绑定 → 整式 MISS 传播，由外层 ?? 兜底或槽位/谓词报硬空缺
-      if (key === MISS) return MISS;
+      if (key === MISS) return soft ? undefined : MISS;
       const k = String(key);
       // 原型链穿透防御（fix 1）：仅自有属性可索引。非自有键 → MISS（硬空缺，与路径遍历缺失段
       // {r.missing} → E_UNBOUND 语义对齐）。
       // 偏差注：review 处方原文为"非自有 → return undefined（软空缺）"，与处方测试
       // {r["toString"]} → E_UNBOUND 直接矛盾；按测试实现（coalesce 兜底不受影响——MISS 同样触发回退）。
-      if (!Object.hasOwn(obj, k)) return MISS;
+      if (!Object.hasOwn(obj, k)) return soft ? undefined : MISS;
       return (obj as Record<string, PSValue>)[k] ?? undefined;
     }
   }
@@ -243,8 +248,8 @@ function renderLines(lines: Node[], frame: Frame): string[] {
         break;
       }
       case "block": {
-        const t = evalExpr(n.cond, frame, n.file, n.line);
-        if (t === MISS) throw psError("render", n.file, n.line, "E_UNBOUND", "@if 谓词引用了未绑定的名字");
+        // 谓词上下文：未绑定名按 undefined（判假），不再抛 E_UNBOUND
+        const t = evalExpr(n.cond, frame, n.file, n.line, true);
         out.push(...renderLines(truthy(t) ? n.ifLines : n.elseLines ?? [], frame));
         break;
       }
